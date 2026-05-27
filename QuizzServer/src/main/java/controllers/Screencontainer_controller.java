@@ -15,6 +15,8 @@ import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.PasswordField;
 import javafx.scene.layout.AnchorPane;
 import javafx.util.StringConverter;
 import model.Answer;
@@ -22,6 +24,7 @@ import model.Answer_Select;
 import model.Question;
 import model.Workspace;
 import services.WorkspaceManager;
+import utils.Notification;
 
 public class Screencontainer_controller implements Initializable {
 
@@ -38,7 +41,24 @@ public class Screencontainer_controller implements Initializable {
 
     @FXML
     private Button lockworkspace_screen_id = new Button();
+    
+    @FXML
+    private Button btnCancel;
+    
+    @FXML
+    private Button btnContinue;
+    
+    @FXML
+    private AnchorPane EnterPinCard;
+    
+    @FXML
+    private Label Change_WorkSpace_Name;
+    
+    @FXML
+    private PasswordField tf_Pin;
+    
 
+    
     @FXML
     public AnchorPane mainbody = new AnchorPane();
     
@@ -47,6 +67,8 @@ public class Screencontainer_controller implements Initializable {
     
     //Workspace management
     private static List<Workspace> allWorkspaces = Workspace_controller.workspaceManager.getAllWorkspace();
+    
+    private int index;
     
     private String hover_btn = "-fx-background-color: #dbe8ff; -fx-text-fill:#2970ff";
 
@@ -93,7 +115,45 @@ public class Screencontainer_controller implements Initializable {
             e.printStackTrace();
         }
     }
-
+    
+    @FXML
+    void btn_cancel_Change(ActionEvent event) {
+    	tf_Pin.setText("");
+    	EnterPinCard.setVisible(false);
+    	Workspace defaultWorkspace = allWorkspaces.get(Workspace_controller.indexComboBox); 
+    	Change_ComboBox_Workspace.setDisable(false);
+    	Change_ComboBox_Workspace.setValue(defaultWorkspace);
+    }
+    
+    @FXML
+    void btn_ContinueWorkSpace(ActionEvent event) {
+        Workspace workspace_Change = Workspace_controller.workspaceManager.getWorkspace(Change_ComboBox_Workspace.getValue().getWorkspaceId());
+		if (tf_Pin.getText().length() == 0 || tf_Pin.getText() == null
+		        || tf_Pin.getText() == "") {
+		    Notification.Error("Error", "Please enter PIN!");
+		    return;
+		}
+		if (!tf_Pin.getText().equals(workspace_Change.getPin())) {
+		    Notification.Error("Error", "Workspace PIN does not match!");
+		    return;
+		}
+		EnterPinCard.setVisible(false); 
+		Workspace_controller.indexComboBox=index;
+		Change_ComboBox_Workspace.setDisable(false);
+        Workspace_controller.current_WorkSpaceID = workspace_Change.getWorkspaceId();
+		Parent root;
+        try {
+            root = (Parent) FXMLLoader.load(getClass().getResource("/ui/screencontainer.fxml"));
+            ((Node) event.getSource()).getScene().setRoot(root);
+            
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.out.println("Error in loading workspace_controller");
+        }
+       
+        
+        
+    }
     public void setAnchor(AnchorPane insidePane) {
         AnchorPane.setTopAnchor(insidePane, 0.0);
         AnchorPane.setBottomAnchor(insidePane, 0.0);
@@ -136,18 +196,12 @@ public class Screencontainer_controller implements Initializable {
     	
     	// set OnAction 
     	Change_ComboBox_Workspace.setOnAction(event -> { 
-    		Workspace_controller.indexComboBox = Change_ComboBox_Workspace.getSelectionModel().getSelectedIndex();
     		Workspace workspace_Change = Workspace_controller.workspaceManager.getWorkspace(Change_ComboBox_Workspace.getValue().getWorkspaceId());
     		if(workspace_Change.getWorkspaceId()!=Workspace_controller.current_WorkSpaceID) {
-    			Parent root;
-    	        try {
-    	            root = (Parent) FXMLLoader.load(getClass().getResource("/ui/Screencontainer.fxml"));
-    	            ((Node) event.getSource()).getScene().setRoot(root);
-    	        } catch (IOException e) {
-    	            e.printStackTrace();
-    	            System.out.println("Error in loading workspace_controller");
-    	        }
-    	        Workspace_controller.current_WorkSpaceID = workspace_Change.getWorkspaceId();
+    			EnterPinCard.setVisible(true);
+    			Change_WorkSpace_Name.setText(workspace_Change.getWorkspaceName());
+    			Change_ComboBox_Workspace.setDisable(true);
+    			index=Change_ComboBox_Workspace.getSelectionModel().getSelectedIndex();
     		}
     	}); 
     }
@@ -156,6 +210,7 @@ public class Screencontainer_controller implements Initializable {
     public void initialize(URL location, ResourceBundle resources) {
 
     	loadComboBox_WorkSpace();
+    	EnterPinCard.setVisible(false);
     	
     }
 }

@@ -281,7 +281,7 @@ public class Workspace_controller implements Initializable {
 
         Parent root;
         try {
-            root = (Parent) FXMLLoader.load(getClass().getResource("/ui/Screencontainer.fxml"));
+            root = (Parent) FXMLLoader.load(getClass().getResource("/ui/screencontainer.fxml"));
             ((Node) event.getSource()).getScene().setRoot(root);
         } catch (IOException e) {
             e.printStackTrace();
