@@ -159,6 +159,15 @@ Script sẽ:
 - Khai báo khóa ngoại với `ON DELETE CASCADE` và `ON UPDATE CASCADE`.
 - Seed dữ liệu mẫu cho workspace, nhóm, sinh viên, môn học và câu hỏi.
 
+## Security Notes
+
+- Không commit `.env`, password database hoặc credential thật.
+- Cấu hình database phải được truyền qua `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` ở môi trường chạy.
+- Socket server chỉ deserialize các class thuộc `model`, `java.lang` và `java.util`; payload vượt giới hạn depth/reference/byte sẽ bị reject.
+- Socket client/server có timeout mặc định `300000ms` để tránh kết nối treo.
+- Server validate mã sinh viên, `HostExamID`, thời gian làm bài, điểm số và cấu trúc đáp án trước khi ghi `Submissions`.
+- Không expose database trực tiếp ra network public. MySQL nên chỉ bind trong local/private network.
+
 ## API Endpoints
 
 Dự án không expose REST API hoặc Swagger. Luồng ghi dữ liệu được thực hiện qua JavaFX controller, service layer, DAO/JDBC và TCP socket trong phiên thi.

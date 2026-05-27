@@ -1,5 +1,8 @@
 package services;
 
+import java.io.ObjectInputFilter;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -11,10 +14,14 @@ import model.Answer_Select;
 import model.HostExam;
 import model.Question;
 import model.Submission;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 
 public class StartClient {
+
+    private static final int SOCKET_TIMEOUT_MILLIS = 300_000;
+    private static final int MAX_SERIAL_DEPTH = 30;
+    private static final long MAX_SERIAL_REFERENCES = 50_000;
+    private static final long MAX_SERIAL_BYTES = 5_000_000;
+    private static final String STUDENT_CODE_PATTERN = "[A-Za-z0-9_-]{1,20}";
 
     private Data submission = new Data();
 
@@ -28,15 +35,19 @@ public class StartClient {
             @Override
             public void run() {
                 try (
-                        Socket socket = new Socket(host, port);
+                        Socket socket = createSocket(host, port);
 
                         ObjectOutputStream outputStream = new ObjectOutputStream(socket.getOutputStream());
 
                         ObjectInputStream inputStream = new ObjectInputStream(socket.getInputStream())) {
+                    inputStream.setObjectInputFilter(StartClient::clientInputFilter);
 
-                    String clientInfo = id;
+                    String clientInfo = id == null ? "" : id.trim();
+                    if (!clientInfo.matches(STUDENT_CODE_PATTERN)) {
+                        return;
+                    }
 
-                    studentID = id;
+                    studentID = clientInfo;
 
                     outputStream.writeObject(clientInfo);
 
@@ -67,6 +78,9 @@ public class StartClient {
     }
 
     public double submit(ArrayList<Question> questionSelecteds, List<Answer_Select> answer_selects, long time) {
+        if (hostExam == null || studentID == null || !studentID.matches(STUDENT_CODE_PATTERN)) {
+            return 0;
+        }
 
         long timeTaken = time;
 
@@ -99,6 +113,35 @@ public class StartClient {
 
         }
         return map;
+    }
+
+    private static Socket createSocket(String host, int port) throws Exception {
+        Socket socket = new Socket(host, port);
+        socket.setSoTimeout(SOCKET_TIMEOUT_MILLIS);
+        return socket;
+    }
+
+    private static ObjectInputFilter.Status clientInputFilter(ObjectInputFilter.FilterInfo info) {
+        if (info.depth() > MAX_SERIAL_DEPTH || info.references() > MAX_SERIAL_REFERENCES
+                || info.streamBytes() > MAX_SERIAL_BYTES) {
+            return ObjectInputFilter.Status.REJECTED;
+        }
+
+        Class<?> serialClass = info.serialClass();
+        if (serialClass == null) {
+            return ObjectInputFilter.Status.UNDECIDED;
+        }
+        if (serialClass.isArray()) {
+            return ObjectInputFilter.Status.ALLOWED;
+        }
+
+        String className = serialClass.getName();
+        if (className.startsWith("model.") || className.startsWith("java.lang.")
+                || className.startsWith("java.util.")) {
+            return ObjectInputFilter.Status.ALLOWED;
+        }
+
+        return ObjectInputFilter.Status.REJECTED;
     }
 
 }
