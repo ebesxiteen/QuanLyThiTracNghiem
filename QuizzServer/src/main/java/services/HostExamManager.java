@@ -20,6 +20,10 @@ public class HostExamManager {
         return new HostExamDAO().create(hostExam);
     }
 
+    public int createHostExamAndReturnId(HostExam hostExam) {
+        return new HostExamDAO().createAndReturnId(hostExam);
+    }
+
     public boolean updateHostExam(HostExam hostExam) {
         return new HostExamDAO().update(hostExam);
     }

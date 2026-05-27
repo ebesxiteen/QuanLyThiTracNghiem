@@ -8,9 +8,9 @@ public final class Constant {
 	
 	public final class MySQLProperties {
 		public static final String DRIVER = "com.mysql.cj.jdbc.Driver";
-		public static final String URL = "jdbc:mysql://localhost:3306/QuizzServer";
-		public static final String USERNAME = "root";
-		public static final String PASSWORD = "tt";
+		public static final String URL = readConfig("DB_URL", "jdbc:mysql://localhost:3306/QuizzDB");
+		public static final String USERNAME = readConfig("DB_USERNAME", "root");
+		public static final String PASSWORD = readConfig("DB_PASSWORD", "");
 	}
 
 	public final static class ScreenSize {
@@ -20,6 +20,20 @@ public final class Constant {
 
 	public final static class KeyMap {
 		public static final KeyCodeCombination FullScreenKey = new KeyCodeCombination(KeyCode.F11);
+	}
+
+	private static String readConfig(String key, String defaultValue) {
+		String systemValue = System.getProperty(key);
+		if (systemValue != null && !systemValue.isBlank()) {
+			return systemValue;
+		}
+
+		String envValue = System.getenv(key);
+		if (envValue != null && !envValue.isBlank()) {
+			return envValue;
+		}
+
+		return defaultValue;
 	}
 
 }

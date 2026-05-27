@@ -52,7 +52,7 @@ CREATE TABLE Questions (
     Chapter VARCHAR(255) NOT NULL,
     Difficulty INT NOT NULL,
     Content VARCHAR(1000) NOT NULL,
-    Answers VARCHAR(1000) NOT NULL,
+    Answers JSON NOT NULL,
     Archived BOOLEAN DEFAULT FALSE,
     CONSTRAINT FK_Questions_Subjects FOREIGN KEY (SubjectID) REFERENCES Subjects (SubjectID) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
@@ -62,7 +62,7 @@ CREATE TABLE Exams (
     SubjectID INT NOT NULL,
     Name VARCHAR(255),
     Description VARCHAR(500),
-    QuestionIDs VARCHAR(1000) NOT NULL,
+    QuestionIDs JSON NOT NULL,
     Archived BOOLEAN DEFAULT FALSE,
     CONSTRAINT FK_Exams_Subjects FOREIGN KEY (SubjectID) REFERENCES Subjects (SubjectID) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
@@ -76,6 +76,7 @@ CREATE TABLE HostExams (
     ExamQuestions JSON NOT NULL,
     ExamID INT NOT NULL,
     GroupID INT NOT NULL,
+    Archived BOOLEAN DEFAULT FALSE,
     CONSTRAINT FK_HostExams_Exams FOREIGN KEY (ExamID) REFERENCES Exams (ExamID) ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT FK_HostExams_Groups FOREIGN KEY (GroupID) REFERENCES SGroups (GroupID) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
@@ -89,8 +90,11 @@ CREATE TABLE Submissions (
     AnswerSelecteds JSON NOT NULL,
     -- PRIMARY KEY (HostExamID, UID),
     CONSTRAINT FK_Submissions_HostExams FOREIGN KEY (HostExamID) REFERENCES HostExams (HostExamID) ON DELETE CASCADE,
-    CONSTRAINT FK_Submissions_Students FOREIGN KEY (UID) REFERENCES Students (UID) ON DELETE CASCADE
+    CONSTRAINT FK_Submissions_Students FOREIGN KEY (UID) REFERENCES Students (UID) ON DELETE CASCADE,
+    CONSTRAINT UQ_Submissions_HostExam_Student UNIQUE (HostExamID, UID)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+CREATE UNIQUE INDEX UQ_Students_StudentID_GroupID ON Students (StudentID, GroupID);
 
 INSERT INTO
     Workspaces

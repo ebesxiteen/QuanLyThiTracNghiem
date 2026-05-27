@@ -2,11 +2,9 @@ package services;
 
 import java.net.Socket;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import model.Answer;
 import model.Answer_Select;
@@ -43,6 +41,9 @@ public class StartClient {
                     outputStream.writeObject(clientInfo);
 
                     hostExam = (HostExam) inputStream.readObject();
+                    if (hostExam == null) {
+                        return;
+                    }
 
                     Submission receivedSubmission = submission.receive();
 
@@ -67,29 +68,14 @@ public class StartClient {
 
     public double submit(ArrayList<Question> questionSelecteds, List<Answer_Select> answer_selects, long time) {
 
-        for (int i = 0; i < questionSelecteds.size(); i++) {
-            System.out.println(questionSelecteds.get(i).getContent());
-            for (int j = 0; j < questionSelecteds.get(i).getAnswers().size(); j++) {
-                System.out.println(questionSelecteds.get(i).getAnswers().get(j).isCorrect());
-            }
-        }
-
         long timeTaken = time;
 
-        float score = 0;
-
         double scorePerQuestion = hostExam.getMaxScore() / (hostExam.getExamQuestions().size() * 1.0);
-        System.out.println(scorePerQuestion);
-       
-        score = (float) scoreCalculator(questionSelecteds, answer_selects,scorePerQuestion);
+        float score = (float) ScoreCalculator.calculate(questionSelecteds, answer_selects, scorePerQuestion);
     
         int studentID_Sub = Integer.parseInt(this.studentID.substring(2));
 
         Map<Integer, List<Integer>> map = convertListMap(questionSelecteds);
-
-        for (Map.Entry<Integer, List<Integer>> entry : map.entrySet()) {
-            System.out.println(entry.getKey() + " : " + entry.getValue());
-        }
 
         Submission submission = new Submission(0, hostExam.getHostExamId(), studentID_Sub, (int) timeTaken, score,
                 map);
@@ -113,35 +99,6 @@ public class StartClient {
 
         }
         return map;
-    }
-
-    private double scoreCalculator(ArrayList<Question> questionSelecteds, List<Answer_Select> answer_selects,
-            double scorePerQuestion) {
-
-        int count_trueAnswers = 0;
-
-        for (int i = 0; i < questionSelecteds.size(); i++) {
-
-            ArrayList<Answer> answers = questionSelecteds.get(i).getAnswers();
-
-            for (int j = 0; j < answers.size(); j++) {
-
-                if (answers.get(j).isCorrect() != answer_selects.get(i*answers.size()+j).isChoice()) {
-                	System.out.println("sai");
-                    break;
-                } else {
-                    if (j == (answers.size() - 1)) {
-                        count_trueAnswers++;
-                    System.out.println("dung");
-                    }
-                }
-                
-                continue;
-            }
-        }
-        System.out.println(count_trueAnswers);
-
-        return count_trueAnswers * scorePerQuestion * 1.0;
     }
 
 }

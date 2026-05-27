@@ -10,8 +10,10 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 import data.StudentDAO;
 import data.SubmissionDAO;
 import model.HostExam;
@@ -20,25 +22,26 @@ import model.Submission;
 
 public class StartServer {
 
-    private HashMap<Socket, String> clients;
+    private final Map<String, String> clients;
     private ServerSocket serverSocket;
     private final int port;
 
     public StartServer(HostExam hostExam, int port) throws IOException {
         this.port = port;
-        this.clients = new HashMap<Socket, String>();
+        this.clients = new ConcurrentHashMap<>();
         try {
             this.serverSocket = new ServerSocket(port);
             new Thread() {
                 @Override
                 public void run() {
                     try {
-                        while (true) {
+                        while (!serverSocket.isClosed()) {
                             new ThreadServer(serverSocket.accept(), clients, hostExam).start();
                         }
                     } catch (SocketException e) {
-                        if (serverSocket.isClosed())
+                        if (serverSocket.isClosed()) {
                             System.out.println("Connection Closed.");
+                        }
                     } catch (IOException e) {
                         System.err.println("Accept failed.");
                     }
@@ -70,134 +73,70 @@ public class StartServer {
     }
 
     public List<String> getConnectedClients() {
-        // System.out.println(clients.values());
-        return new ArrayList<String>(clients.values());
+        return new ArrayList<>(clients.values());
     }
-
 }
 
 class ThreadServer extends Thread {
 
-    private Socket socket;
-    private HashMap<Socket, String> clients;
-    private HostExam HostExam;
+    private final Socket socket;
+    private final Map<String, String> clients;
+    private final HostExam hostExam;
 
-    public ThreadServer(Socket socket, HashMap<Socket, String> clients, HostExam hostExam) {
+    public ThreadServer(Socket socket, Map<String, String> clients, HostExam hostExam) {
         this.socket = socket;
         this.clients = clients;
-        this.HostExam = hostExam;
+        this.hostExam = hostExam;
     }
 
     @Override
     public void run() {
-        String studentInfo = null;
-
-        Submission studentSubmission = null;
-
         try (
                 ObjectOutputStream outputStream = new ObjectOutputStream(socket.getOutputStream());
-
                 ObjectInputStream inputStream = new ObjectInputStream(socket.getInputStream())) {
-            while (true) {
-                Object dataReceived = inputStream.readObject();
 
-                System.out.println(dataReceived);
-
-                if (dataReceived instanceof String) {
-
-                    studentInfo = (String) dataReceived;
-
-                    Student student = new StudentDAO().getByStudentIdfromGroup(studentInfo, HostExam.getGroupId());
-
-                    String studentId = "";
-
-                    String studentName = "";
-
-                    if (student != null) {
-
-                        studentId = student.getStudentId();
-                        studentName = student.getFirstName() + " " + student.getLastName();
-                    }
-                    System.out.println("Student not found");
-
-                    int timeTaken = 0;
-
-                    float score = 0;
-
-                    if (studentSubmission != null) {
-
-                        timeTaken = studentSubmission.getTimeTaken();
-
-                        score = studentSubmission.getScore();
-                    }
-
-                    clients.put(socket,
-                            studentId + "-" + studentName + "-" + String.valueOf(timeTaken) + "-"
-                                    + String.valueOf(score));
-
-                    outputStream.writeObject(HostExam);
-
-                } else {
-
-                    studentSubmission = (Submission) dataReceived;
-
-                    throw new SocketException();
-                }
-            }
-        } catch (SocketException e) {
-
-            int studentId_int = studentSubmission.getStudentId();
-
-            String studentID_String = "";
-
-            if (studentId_int > 99) {
-                studentID_String = "ST" + String.valueOf(studentId_int);
-            } else {
-                studentID_String = "ST"
-                        + (studentId_int >= 10 ? "0" + String.valueOf(studentId_int)
-                                : "00" + String.valueOf(studentId_int));
+            Object studentPayload = inputStream.readObject();
+            if (!(studentPayload instanceof String)) {
+                return;
             }
 
-            int group_ID = HostExam.getGroupId();
-
-            Student student_Student = new StudentDAO().getByStudentIdfromGroup(studentID_String, group_ID);
-
-            studentSubmission.setStudentId(student_Student.getUid());
-
-            int idSubmiss = new SubmissionDAO().getAll().size() + 1;
-
-            studentSubmission.setSubmissionId(idSubmiss);
-
-            boolean isSubmit = new SubmissionDAO().create(studentSubmission);
-            if (isSubmit) {
-                System.out.println("Submission success");
+            String studentCode = (String) studentPayload;
+            Student student = new StudentDAO().getByStudentIdfromGroup(studentCode, hostExam.getGroupId());
+            if (student == null) {
+                outputStream.writeObject(null);
+                outputStream.flush();
+                return;
             }
 
-            String studentId = "";
+            clients.put(student.getStudentId(), formatClientStatus(student, 0, 0));
+            outputStream.writeObject(hostExam);
+            outputStream.flush();
 
-            String studentName = "";
-
-            if (student_Student != null) {
-
-                studentId = student_Student.getStudentId();
-
-                studentName = student_Student.getFirstName() + " " + student_Student.getLastName();
+            Object submissionPayload = inputStream.readObject();
+            if (!(submissionPayload instanceof Submission)) {
+                return;
             }
 
-            int timeTaken = studentSubmission.getTimeTaken();
+            Submission submission = (Submission) submissionPayload;
+            submission.setStudentId(student.getUid());
 
-            float score = studentSubmission.getScore();
-
-            clients.put(socket, studentId + "-" + studentName + "-" + timeTaken + "-" + score);
-
-            try {
-                socket.close();
-            } catch (IOException e1) {
-                e1.printStackTrace();
+            if (new SubmissionDAO().create(submission)) {
+                clients.put(student.getStudentId(),
+                        formatClientStatus(student, submission.getTimeTaken(), submission.getScore()));
             }
         } catch (Exception e) {
             e.printStackTrace();
+        } finally {
+            try {
+                socket.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 
+    private String formatClientStatus(Student student, int timeTaken, float score) {
+        return student.getStudentId() + "-" + student.getFirstName() + " " + student.getLastName() + "-"
+                + timeTaken + "-" + score;
+    }
 }

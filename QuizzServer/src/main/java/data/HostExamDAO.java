@@ -6,6 +6,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -47,8 +48,10 @@ public class HostExamDAO implements interfaceDAO<HostExam> {
                     }.getType();
                     if (questionsJson != null && !questionsJson.isEmpty()) {
                         hostExam.setExamQuestions(gson.fromJson(questionsJson, questionListType));
-                    } else
-                        list.add(hostExam);
+                    } else {
+                        hostExam.setExamQuestions(new ArrayList<>());
+                    }
+                    list.add(hostExam);
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -61,12 +64,17 @@ public class HostExamDAO implements interfaceDAO<HostExam> {
 
     @Override
     public boolean create(HostExam hostExam) {
+        return createAndReturnId(hostExam) > 0;
+    }
+
+    public int createAndReturnId(HostExam hostExam) {
         boolean b = false;
+        int generatedId = 0;
         con = SQLUtils.getConnection();
         if (con != null) {
             try {
                 String query = "INSERT INTO HostExams (TimeLimit, MaxScore, isShuffled, ExamQuestions, ExamID, GroupID) VALUES (?, ?, ?, ?, ?, ?)";
-                PreparedStatement ps = con.prepareStatement(query);
+                PreparedStatement ps = con.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
                 ps.setInt(1, hostExam.getTimeLimit());
                 ps.setBigDecimal(2, new BigDecimal(hostExam.getMaxScore()));
                 ps.setBoolean(3, hostExam.isShuffle());
@@ -74,13 +82,20 @@ public class HostExamDAO implements interfaceDAO<HostExam> {
                 ps.setInt(5, hostExam.getExamId());
                 ps.setInt(6, hostExam.getGroupId());
                 b = ps.executeUpdate() > 0;
+                if (b) {
+                    ResultSet keys = ps.getGeneratedKeys();
+                    if (keys.next()) {
+                        generatedId = keys.getInt(1);
+                        hostExam.setHostExamId(generatedId);
+                    }
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             } finally {
                 SQLUtils.closeConnection(con);
             }
         }
-        return b;
+        return generatedId;
     }
 
     public ArrayList<Submission> getByHostExamID(int ExamID) {

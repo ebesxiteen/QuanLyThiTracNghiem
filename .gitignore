@@ -5,3 +5,6 @@
 /QuizzClient/dependency-reduced-pom.xml
 /QuizzClient/bin/
 /.metadata/
+*.log
+hs_err_pid*.log
+.env

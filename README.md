@@ -106,7 +106,7 @@ mvn javafx:run -Djavafx.mainClass=application.Launcher
 
 ## Environment Configuration
 
-Dự án hiện cấu hình kết nối MySQL trong `Constant.MySQLProperties`.
+Dự án đọc cấu hình từ Java system properties hoặc environment variables. Không commit password database thật vào repository.
 
 File server:
 
@@ -120,22 +120,27 @@ File client:
 QuizzClient/src/main/java/utils/Constant.java
 ```
 
-Cấu hình mặc định:
+Cấu hình runtime nên được truyền qua biến môi trường hoặc VM options:
 
-```java
-public static final String DRIVER = "com.mysql.cj.jdbc.Driver";
-public static final String URL = "jdbc:mysql://localhost:3306/QuizzDB";
-public static final String USERNAME = "root";
-public static final String PASSWORD = "123456789";
+```bash
+set DB_URL=jdbc:mysql://localhost:3306/QuizzDB
+set DB_USERNAME=root
+set DB_PASSWORD=<your_database_password>
 ```
 
-Khi triển khai ở môi trường khác, thay đổi các giá trị sau:
+File `.env.example` là template cấu hình khi triển khai qua shell, IDE run configuration hoặc CI:
+
+```bash
+copy .env.example .env
+```
+
+Các key cấu hình:
 
 | Key | Description | Example |
 | --- | --- | --- |
 | `DB_URL` | JDBC URL tới MySQL database | `jdbc:mysql://localhost:3306/QuizzDB` |
 | `DB_USERNAME` | MySQL username | `root` |
-| `DB_PASSWORD` | MySQL password | `123456789` |
+| `DB_PASSWORD` | MySQL password | `<your_database_password>` |
 | `SERVER_HOST` | IP server để client kết nối | `192.168.1.10` |
 | `SERVER_PORT` | Port phiên thi do server mở | `5000` |
 

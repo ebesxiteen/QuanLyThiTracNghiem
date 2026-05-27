@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -105,7 +106,7 @@ public class SubmissionDAO implements interfaceDAO<Submission> {
         if (con != null) {
             try {
                 String query = "INSERT INTO Submissions (HostExamID, UID, TimeTaken, Score, AnswerSelecteds) VALUES (?, ?, ?, ?, ?)";
-                PreparedStatement ps = con.prepareStatement(query);
+                PreparedStatement ps = con.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
                 ps.setInt(1, submission.getHostExamId());
                 ps.setInt(2, submission.getStudentId());
                 ps.setInt(3, submission.getTimeTaken());
@@ -116,6 +117,12 @@ public class SubmissionDAO implements interfaceDAO<Submission> {
                 ps.setString(5, answerJson);
 
                 b = ps.executeUpdate() > 0;
+                if (b) {
+                    ResultSet keys = ps.getGeneratedKeys();
+                    if (keys.next()) {
+                        submission.setSubmissionId(keys.getInt(1));
+                    }
+                }
             } catch (SQLException e) {
                 e.printStackTrace();
             } finally {

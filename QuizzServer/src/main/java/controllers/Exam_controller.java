@@ -1239,18 +1239,18 @@ public class Exam_controller implements Initializable {
             listQuestions_HostExam.add(question);
         }
 
-        int HostExamID = hostExamManager.getAllHostExams().size() + 1;
-
-        HostExam hostExam = new HostExam(HostExamID, exam_Current_SubjectManagement.getExamId(), groupId, timeLimit,
+        HostExam hostExam = new HostExam(0, exam_Current_SubjectManagement.getExamId(), groupId, timeLimit,
                 maxCore,
                 isShuffle, listQuestions_HostExam);
 
-        boolean isCreateSuccess = hostExamManager.createHostExam(hostExam);
+        int hostExamId = hostExamManager.createHostExamAndReturnId(hostExam);
 
-        if (!isCreateSuccess) {
+        if (hostExamId <= 0) {
             Notification.Error("Error", "Start host exam failed");
             return;
         }
+
+        hostExam.setHostExamId(hostExamId);
 
         // Start Server
         try {
